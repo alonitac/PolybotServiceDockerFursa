@@ -1,10 +1,3 @@
-> [!IMPORTANT]
-> This project is part of the [DevOpsTheHardWay][DevOpsTheHardWay] course. Please [onboard the course][onboarding_tutorial] before starting. 
-> 
-> The project builds upon the concepts covered in our [previous Python project][PolybotServicePython].
-> To make ensure a smooth learning experience, we recommend completing the Python project first. 
-
-
 # The Polybot Service: Docker Project [![][autotest_badge]][autotest_workflow]
 
 ## Background and goals
@@ -20,15 +13,16 @@ You'll design, develop and deploy a service consisted by multiple containerized 
 
 ## Preliminaries
 
-
-1. Fork this repo (read [here][fork_github] how). 
-2. Clone your forked repository into a new PyCharm project (read [here][clone_pycharm] how).   
+1. Fork this repo by clicking **Fork** in the top-right corner of the page. 
+2. Clone your forked repository by:
+   ```bash
+   git clone https://github.com/<your-username>/<your-project-repo-name>
+   ```
+   Change `<your-username>` and `<your-project-repo-name>` according to your GitHub username and the name you gave to your fork. E.g. `git clone https://github.com/johndoe/PolybotServiceDocker`.
 3. It is a good practice to create an isolated Python virtual environment specifically for your project. 
    [Configure a new Python virtual environment in PyCharm](https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html).
-4. This project involves working with virtual machines in AWS. You must have access to an AWS account to complete the project.
-   Note that you are responsible for the costs of any resources you create. You'll mainly pay for 1 running `medium` virtual machine with 8GB disk and small amount of stored data in S3. If you work properly, the cost estimation is **10 USD**, assuming your instance is running for 8 hours a day for a whole month (the project can be completed in much less than a month. You can, and must, stop you instances at the end of usage to avoid additional charges).
 
-Later on, you are encouraged to change the `README.md` file content to provide relevant information about your service project, e.g. how to launch the app, main features, etc.
+Later on, you are **required** to change the `README.md` file content to provide relevant information about your service project, e.g. how to launch the app, main features, etc.
 
 Let's get started...
 
@@ -157,24 +151,24 @@ Here is an end-to-end example of how it may look like:
 You are highly encouraged to leverage your code implementation from the previous [Python project][PolybotServicePython], or alternatively, to use the code sample given to you under `polybot/` directory.
 To get some guidance on how to implement the code, take a look at the `# TODO`s in `polybot/bot.py` file.
 
-## Deploy the service in an EC2 instance as a Docker Compose project
+## Deploy the service for Prod and Dev in a single EC2 instance as a Docker Compose project
 
 To simplify the deployment process, we'll create a Docker Compose project in the `docker-compose.yaml` file. 
 This file will enable you to launch all 3 microservices with a single command: `docker compose up`.
 
-To ensure flexibility and avoid manual editing of the `docker-compose.yaml` file each time you build new version of your images,
-we'll specify the values that change frequently as environment variables for the Docker Compose project via a `.env` file. 
+Since **the same** `docker-compose.yaml` project file is being used **for both Prod and Dev envs**, 
+avoid specifying manual env-related values. Instead, provide env-related values (e.g. bot token, image name and tag, bot URL) as environment variables using `.env` file.  
 
 [An `.env` file in Docker Compose](https://docs.docker.com/compose/environment-variables/set-environment-variables/) is a text file used to define environment variables that available when running `docker compose up`. 
 
-Here's an example of how your `.env` file should look:
+Here's an example of how your `.env` file might look like:
 
 ```text
 # .env file
 
 POLYBOT_IMG_NAME=polybot:v123
 YOLO5_IMG_NAME=yolo5:v123
-TELEGRAM_APP_URL=https://f176-2a06-c701-4cdc-a500-49d5-ae2b-1cd1-61d1.ngrok-free.app
+TELEGRAM_APP_URL=https://dev-bot.mydomain.click
 ```
 
 And here's how you use it in the compose file:
@@ -190,11 +184,13 @@ services:
 That way you won't need to directly edit your `docker-compose.yaml` file each time you build a new version of your images.
 
 Finally, deploy the compose project in a single `medium` Ubuntu EC2 instance with 20GB disk.
+In general, you should have 2 different EC2 `medium` instances, one for Dev bot, one for Prod bot. 
+
 
 #### Deployment notes
 
-- You can expose the polybot to Telegram servers using Ngrok, as done in the previous project (install and launch ngrok on the EC2 instance).
-- Don't configure your compose file to build the images. Instead, push the `yolo5` and `polybot` images to a public DockerHub or [ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-console.html) repo and use these images. 
+- You can expose the polybot to Telegram servers using you domain, as done in the previous project.
+- Don't configure your compose file to build the images. Instead, push the `yolo5` and `polybot` images to a public DockerHub repo and use these images. 
 - Attach an IAM role to your EC2 instance with the relevant permissions (E.g. read/write access to S3). Don't manage AWS credentials yourself, and never hard-code AWS credentials in the `docker-compose.yaml` file. 
 - Don't hard-code your telegram token in the compose file, this is a sensitive data. [Read here](https://docs.docker.com/compose/use-secrets/) how to do it properly.  
 - Build a robust code. Implement **retry** and **timeout** mechanism when needed, handle error properly. Test your app under failure - does the polybot keep work even if the yolo5 is down? Is yolo5 crashing when the mongo cluster is not initialize? etc...
@@ -204,62 +200,36 @@ Finally, deploy the compose project in a single `medium` Ubuntu EC2 instance wit
 
 ## Integrate a simple CI/CD pipeline using GitHub Actions
 
-CI/CD (Continuous integration and continuous deployment) is a methodology which automates the deployment process of software project. 
-We'll spend fairly amount of time to discuss this topic. But for now we want to achieve a simple outcome:
-
-When you make changes to your code locally, commit, and push them, a new GitHub Actions **workflow** is automatically triggered.
-This workflow builds new versions of Docker images and deploys them to Docker Compose project in your EC2 instance.
-
-> [!NOTE]
-> A workflow is an automated process defined in a YAML file that helps automate tasks, such as building, testing, and deploying code, in a GitHub repository.
-
-No need to manually build images, no need to manually connect to EC2 instance, or launch the Docker Compose project - everything from code changes to deployment is seamlessly done by an automatic process.
-This is why it is called **continuous deployment**, because on every code change, a new version of the app is being deployed automatically.
-
-1. First, get yourself familiar with how GitHub Actions works: https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions. 
-2. The GitHub Actions workflow is already written for you and available under `.github/workflows/service-deploy.yaml`. Take a moment to review it, and customize it according to your specific requirements.
+The GitHub Actions workflows are already written for you and available under `.github/workflows/service-deploy-[dev|prod].yaml`. Take a moment to review it, and **customize it** according to your specific requirements.
 
    The workflow expects some secrets to be available:
    - Go to your project repository on GitHub, navigate to **Settings** > **Secrets and variables** > **Actions**.
    - Click on **New repository secret**.
    - Define the following secret values:
      - `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD` - Only if you use DockerHub to store images.
-     - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` - Only if you use ECR to store images.
      - `EC2_SSH_PRIVATE_KEY` - The private key value to connect to your EC2.
      - `TELEGRAM_BOT_TOKEN` - The Telegram bot token.
-4. Make some changes to your bot code, then commit and push it. Notice how the **Polybot Service Deployment** workflow automatically kicked in. Once the workflow completes successfully, your new application version should be automatically built and deployed in your EC2 instance. Make sure the service is working properly and reflects the code changes you've made. 
+
+Check that your CI/CD pipeline works properly for both Dev and Prod using the same Git flow used in the previous project.
+
 
 ## Submission
 
-Once the **Polybot Service Deployment** workflow is completed, the **Project auto-testing** workflow would be triggered automatically and test your project. 
+Once the **Polybot Service Deployment Dev** workflow is completed, the **Project auto-testing** workflow would be triggered automatically and test your project. 
 
-So no further step should be taken to pass the automated testing :-)
+So no further steps should be taken to pass the automated testing :-)
 
 As always, if there are any failures, click on the failed job and **read the test logs carefully**. Fix your solution, commit and push again.
 
 **Note:** Your EC2 instances should be running while the automated test is performed. **Don't forget to turn off the machines when you're done**.
 
-### Share your project 
-
-You are highly encourages to share your project with others by creating a **Pull Request**.
-
-Create a Pull Request from your repo, branch `main` (e.g. `johndoe/PolybotServiceDocker`) into our project repo (i.e. `alonitac/PolybotServiceDocker`), branch `main`.  
-Feel free to explore other's pull requests to discover different solution approaches.
-
-As it's only an exercise, we may not approve your pull request (approval would lead your changes to be merged into our original project). 
-
-
 ## Good Luck
 
 
-[DevOpsTheHardWay]: https://github.com/alonitac/DevOpsTheHardWay
-[onboarding_tutorial]: https://github.com/alonitac/DevOpsTheHardWay/blob/main/tutorials/onboarding.md
 [autotest_badge]: ../../actions/workflows/project_auto_testing.yaml/badge.svg?event=push
 [autotest_workflow]: ../../actions/workflows/project_auto_testing.yaml/
-[fork_github]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo#forking-a-repository
-[clone_pycharm]: https://www.jetbrains.com/help/pycharm/set-up-a-git-repository.html#clone-repo
 [github_actions]: ../../actions
 
-[PolybotServicePython]: https://github.com/alonitac/PolybotServicePython
+[PolybotServicePython]: https://github.com/alonitac/PolybotServicePythonFursa
 [docker_project_street]: https://alonitac.github.io/DevOpsTheHardWay/img/docker_project_street.jpeg
 [docker_project_polysample]: https://alonitac.github.io/DevOpsTheHardWay/img/docker_project_polysample.jpg

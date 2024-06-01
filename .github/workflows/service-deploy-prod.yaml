@@ -1,0 +1,89 @@
+name: Polybot Service Deployment Prod
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  BOT_INSTANCE_DOMAIN: prod.mydomain.click  # TODO replace to your bot domain
+
+jobs:
+  PolybotBuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo code
+        uses: actions/checkout@v2
+
+      - name: Build and push image
+        run: |
+          cd polybot
+          
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+
+          IMAGE_NAME=polybot:${{ github.run_number }}
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+  Yolo5Build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo code
+        uses: actions/checkout@v2
+
+      - name: Build and push image
+        run: |
+          cd yolo5
+   
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+
+          IMAGE_NAME=yolo5:${{ github.run_number }}
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+  Deploy:
+    name: Deploy Docker compose project
+    runs-on: ubuntu-latest
+    needs:
+      - PolybotBuild
+      - Yolo5Build
+
+    steps:
+      - name: Checkout the repo code
+        uses: actions/checkout@v2
+
+      - name: Copy Compose files to the EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ env.BOT_INSTANCE_DOMAIN }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          source: docker-compose.yaml
+          target: PolybotService/
+
+      - name: Update the Docker Compose project in the EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.BOT_INSTANCE_DOMAIN }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            # You deployment script here...
+                     
+            cd PolybotService/
+            
+            # Save telegram bot token in a secret file, to be used in docker-compose.yaml
+            echo -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" > telegram_bot_token.secret
+            
+            # Generate .env file
+            echo """
+            POLYBOT_IMG_NAME=polybot:${{ github.run_number }}
+            YOLO5_IMG_NAME=yolo5:${{ github.run_number }}
+            TELEGRAM_APP_URL=$BOT_INSTANCE_DOMAIN
+            """ > .env
+            
+            # Take the service down
+            docker compose down
+            
+            # Take it up with the current updated values
+            docker compose up -d

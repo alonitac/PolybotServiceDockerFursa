@@ -1,7 +1,7 @@
 name: Project auto-testing
 on:
   workflow_run:
-    workflows: ["Polybot Service Deployment"]
+    workflows: ["Polybot Service Deployment Dev"]
     types:
       - completed
 
@@ -14,23 +14,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          sparse-checkout: .github/workflows/service-deploy.yaml
-      - name: Parse EC2 pablic IP address
+          sparse-checkout: .github/workflows/service-deploy-dev.yaml
+      - name: Parse bot instance domain
         run: |
-          EC2_PUBLIC_IP=$(grep -E "EC2_PUBLIC_IP" .github/workflows/service-deploy.yaml | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' || true)
-          echo -e "\n\nParsed EC2 public IP address: $EC2_PUBLIC_IP"          
+          sudo apt update && sudo apt install yq -y
+          
+          BOT_INSTANCE_DOMAIN=$(yq '.env.BOT_INSTANCE_DOMAIN' .github/workflows/service-deploy-dev.yaml)
+          echo -e "\n\nParsed bot instance domain BOT_INSTANCE_DOMAIN: $BOT_INSTANCE_DOMAIN"          
 
-          if [[ -z "$EC2_PUBLIC_IP" ]]; then
-            echo -e "\n\nInvalid EC2_PUBLIC_IP env var found in .github/workflows/service-deploy.yaml"
+          if [[ -z "$BOT_INSTANCE_DOMAIN" ]]; then
+            echo -e "\n\nInvalid BOT_INSTANCE_DOMAIN env var found in .github/workflows/service-deploy-dev.yaml"
             exit 1
           fi
           
-          echo "EC2_PUBLIC_IP=${EC2_PUBLIC_IP}" >> "$GITHUB_ENV"
+          echo "BOT_INSTANCE_DOMAIN=${BOT_INSTANCE_DOMAIN}" >> "$GITHUB_ENV"
 
       - name: Test Docker Compose project
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.EC2_PUBLIC_IP }}
+          host: ${{ env.BOT_INSTANCE_DOMAIN }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
