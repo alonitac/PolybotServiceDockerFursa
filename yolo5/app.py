@@ -20,7 +20,7 @@ app = Flask(__name__)
 mongo_uri = 'mongodb://mongo1:27017/'
 s3 = boto3.client('s3')
 client = MongoClient(mongo_uri)
-db = client['your_database_name']
+db = client['ghaleb_db']
 collection = db['predictions']
 
 
