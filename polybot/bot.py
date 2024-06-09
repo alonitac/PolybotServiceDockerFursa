@@ -3,6 +3,8 @@ from loguru import logger
 import os
 import time
 from telebot.types import InputFile
+import boto3
+import requests
 
 
 class Bot:
@@ -66,12 +68,48 @@ class Bot:
 
 
 class ObjectDetectionBot(Bot):
+    def __init__(self, token, telegram_chat_url, bucket_name, yolo5_service_url):
+        super().__init__(token, telegram_chat_url)
+        self.bucket_name = bucket_name
+        self.yolo5_service_url = yolo5_service_url
+        self.s3 = boto3.client('s3')
+
+    def upload_photo_to_s3(self, photo_path):
+        photo_name = os.path.basename(photo_path)
+        self.s3.upload_file(photo_path, self.bucket_name, photo_name)
+        return photo_name
+
+    def get_yolo5_prediction(self, img_name):
+        response = requests.post(f'{self.yolo5_service_url}/predict', params={'imgName': img_name})
+        if response.status_code != 200:
+            raise RuntimeError(f'Failed to get prediction from Yolo5 service: {response.text}')
+        return response.json()
+
     def handle_message(self, msg):
         logger.info(f'Incoming message: {msg}')
 
         if self.is_current_msg_photo(msg):
             photo_path = self.download_user_photo(msg)
+            self.send_text(msg['chat']['id'], 'Photo received. Processing...')
 
-            # TODO upload the photo to S3
-            # TODO send an HTTP request to the `yolo5` service for prediction
-            # TODO send the returned results to the Telegram end-user
+            try:
+                img_name = self.upload_photo_to_s3(photo_path)
+                self.send_text(msg['chat']['id'], 'Photo uploaded to S3. Getting predictions...')
+
+                prediction = self.get_yolo5_prediction(img_name)
+                logger.info(f'Prediction: {prediction}')
+
+                # Format the prediction result
+                labels = prediction['labels']
+                result_text = "Detected objects:\n" + "\n".join(
+                    [
+                        f"{label['class']} at ({label['cx']:.2f}, {label['cy']:.2f}) with size ({label['width']:.2f}, {label['height']:.2f})"
+                        for label in labels]
+                )
+
+                self.send_text(msg['chat']['id'], result_text)
+
+            except Exception as e:
+                logger.error(f'Error handling message: {e}')
+                self.send_text(msg['chat']['id'], f'Error: {e}')
+
