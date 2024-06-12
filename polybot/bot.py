@@ -87,10 +87,14 @@ class ObjectDetectionBot(Bot):
         if response.status_code != 200:
             raise RuntimeError(f'Failed to get prediction from Yolo5 service: {response.text}')
 
-        try:
-            prediction = response.json()
-        except ValueError as e:
-            raise RuntimeError(f'Failed to parse JSON response: {e} | Response text: {response.text}')
+        # Assuming the response is in a key-value format or another structure
+        # Parsing the response manually
+        prediction = {}
+        lines = response.text.split('\n')
+        for line in lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                prediction[key.strip()] = value.strip()
 
         return prediction
 
@@ -103,23 +107,29 @@ class ObjectDetectionBot(Bot):
 
             try:
                 img_name = self.upload_photo_to_s3(photo_path)
-                # self.send_text(msg['chat']['id'], 'Photo uploaded to S3. Getting predictions...')
                 logger.info(f'Uploading: photo uploaded to s3')
 
                 prediction = self.get_yolo5_prediction(img_name)
                 logger.info(f'Prediction: {prediction}')
 
                 # Format the prediction result
-                labels = prediction['labels']
-                result_text = "I detected the following objects:\n" + "\n".join(
-                    [
-                        f"{label['class']} at ({label['cx']:.2f}, {label['cy']:.2f}) with size ({label['width']:.2f}, {label['height']:.2f})"
-                        for label in labels]
-                )
+                if 'labels' in prediction:
+                    labels = prediction['labels']
+                    result_text = "I detected the following objects:\n" + "\n".join(
+                        [
+                            f"{label['class']} at ({label['cx']:.2f}, {label['cy']:.2f}) with size ({label['width']:.2f}, {label['height']:.2f})"
+                            for label in labels
+                        ]
+                    )
+                else:
+                    result_text = "Prediction result:\n" + "\n".join(
+                        [f"{key}: {value}" for key, value in prediction.items()]
+                    )
 
                 self.send_text(msg['chat']['id'], result_text)
 
             except Exception as e:
                 logger.error(f'Error handling message: {e}')
                 self.send_text(msg['chat']['id'], f'Error :( : {e}')
+
 
