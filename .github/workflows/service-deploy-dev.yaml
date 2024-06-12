@@ -6,7 +6,7 @@ on:
       - dev
 
 env:
-  BOT_INSTANCE_DOMAIN: dev.mydomain.click  # TODO replace to your bot domain
+  BOT_INSTANCE_DOMAIN: dev-bot.galeb.click
 
 jobs:
   PolybotBuild:
