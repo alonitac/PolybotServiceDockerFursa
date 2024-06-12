@@ -90,18 +90,18 @@ class ObjectDetectionBot(Bot):
 
         if self.is_current_msg_photo(msg):
             photo_path = self.download_user_photo(msg)
-            self.send_text(msg['chat']['id'], 'Photo received. Processing...')
+            self.send_text(msg['chat']['id'], 'I received the photo. Let me process it :)')
 
             try:
                 img_name = self.upload_photo_to_s3(photo_path)
-                self.send_text(msg['chat']['id'], 'Photo uploaded to S3. Getting predictions...')
+                # self.send_text(msg['chat']['id'], 'Photo uploaded to S3. Getting predictions...')
 
                 prediction = self.get_yolo5_prediction(img_name)
                 logger.info(f'Prediction: {prediction}')
 
                 # Format the prediction result
                 labels = prediction['labels']
-                result_text = "Detected objects:\n" + "\n".join(
+                result_text = "I detected the following objects:\n" + "\n".join(
                     [
                         f"{label['class']} at ({label['cx']:.2f}, {label['cy']:.2f}) with size ({label['width']:.2f}, {label['height']:.2f})"
                         for label in labels]
@@ -111,5 +111,5 @@ class ObjectDetectionBot(Bot):
 
             except Exception as e:
                 logger.error(f'Error handling message: {e}')
-                self.send_text(msg['chat']['id'], f'Error: {e}')
+                self.send_text(msg['chat']['id'], f'Error :( : {e}')
 
