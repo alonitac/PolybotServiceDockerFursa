@@ -1,5 +1,4 @@
 services:
-
   mongo1:
     image: mongo:5
     command: [ "mongod", "--replSet", "myReplicaSet", "--bind_ip", "localhost,mongo1" ]
@@ -10,7 +9,7 @@ services:
     networks:
       - mongoCluster
     volumes:
-      mongo1_db:/data/db
+      - mongo1_db:/data/db
 
   mongo2:
     image: mongo:5
