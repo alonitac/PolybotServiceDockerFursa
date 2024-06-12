@@ -65,7 +65,9 @@ def predict():
 
     # Uploads the predicted image (predicted_img_path) to S3 (be careful not to override the original image).
     try:
-        s3.upload_file(str(predicted_img_path), images_bucket, f'predicted/{img_name}')
+        s3.upload_file(str(predicted_img_path), images_bucket, f'predictions/{prediction_id}/{img_name}')
+        logger.info(
+            f'prediction: {prediction_id}/{img_name}. Uploaded predicted image to s3://{images_bucket}/predictions/{prediction_id}/{img_name}')
     except Exception as e:
         logger.error(f'Error uploading image {img_name} to S3: {e}')
         return f'error: Failed to upload predicted image: {str(e)}', 500
