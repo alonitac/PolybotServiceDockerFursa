@@ -67,3 +67,9 @@ services:
 networks:
   mongoCluster:
     driver: bridge
+
+volumes:
+  mongo1_db:
+  mongo2_db:
+  mongo3_db:
+
