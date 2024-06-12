@@ -80,10 +80,19 @@ class ObjectDetectionBot(Bot):
         return photo_name
 
     def get_yolo5_prediction(self, img_name):
-        response = requests.post(f'{self.yolo5_service_url}/predict', params={'imgName': img_name})
+        response = requests.post(f"{self.yolo5_service_url}/predict", params={'imgName': img_name})
+        logger.info(f'Yolo5 service response status: {response.status_code}')
+        logger.info(f'Yolo5 service response text: {response.text}')
+
         if response.status_code != 200:
             raise RuntimeError(f'Failed to get prediction from Yolo5 service: {response.text}')
-        return response.json()
+
+        try:
+            prediction = response.json()
+        except ValueError as e:
+            raise RuntimeError(f'Failed to parse JSON response: {e} | Response text: {response.text}')
+
+        return prediction
 
     def handle_message(self, msg):
         logger.info(f'Incoming message: {msg}')
@@ -95,6 +104,7 @@ class ObjectDetectionBot(Bot):
             try:
                 img_name = self.upload_photo_to_s3(photo_path)
                 # self.send_text(msg['chat']['id'], 'Photo uploaded to S3. Getting predictions...')
+                logger.info(f'Uploading: photo uploaded to s3')
 
                 prediction = self.get_yolo5_prediction(img_name)
                 logger.info(f'Prediction: {prediction}')
