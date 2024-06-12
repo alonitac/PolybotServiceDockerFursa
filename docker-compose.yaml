@@ -61,7 +61,7 @@ services:
     networks:
       - mongoCluster
     volumes:
-      - $HOME/.aws/credentials:/root/.aws/credentials
+      - $HOME/.aws:/root/.aws
 
 networks:
   mongoCluster:
