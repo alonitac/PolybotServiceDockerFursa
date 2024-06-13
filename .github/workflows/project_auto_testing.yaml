@@ -38,7 +38,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
             
-            curl -O -L https://raw.githubusercontent.com/alonitac/PolybotServiceDocker/main/test/test-compose-project.sh
+            curl -O -L https://raw.githubusercontent.com/alonitac/PolybotServiceDockerFursa/main/test/test-compose-project.sh
             bash test-compose-project.sh
 
   on-failure:

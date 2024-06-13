@@ -54,7 +54,7 @@ echo -e "\n\n\n-----------------------------------------------------------------
 echo "Test Case IV: Polybot service is available from the host machine"
 echo -e "-----------------------------------------------------------------------------------------------------------------"
 
-response_code=$(curl -s -o /dev/null -w "%{http_code}" localhost:8443)
+response_code=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost:8443)
 
 if [ "$response_code" -ne 200 ]; then
   echo "The polybot service is not available on port 8443 from the host machine"
