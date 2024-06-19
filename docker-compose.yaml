@@ -8,8 +8,8 @@ services:
       - "27017:27017"
     networks:
       - mongoCluster
-#    volumes:
-#      - mongo1_db:/data/db
+    volumes:
+      - mongo1_db:/data/db
 
   mongo2:
     image: mongo:5
@@ -20,8 +20,8 @@ services:
       - "27018:27017"
     networks:
       - mongoCluster
-#    volumes:
-#      - mongo2_db:/data/db
+    volumes:
+      - mongo2_db:/data/db
 
 
   mongo3:
@@ -33,8 +33,8 @@ services:
       - "27019:27017"
     networks:
       - mongoCluster
-#    volumes:
-#      - mongo3_db:/data/db
+    volumes:
+      - mongo3_db:/data/db
 
   yolo:
     image: ${YOLO_IMG_NAME}
@@ -67,8 +67,8 @@ networks:
   mongoCluster:
     driver: bridge
 
-#volumes:
-#  mongo1_db:
-#  mongo2_db:
-#  mongo3_db:
+volumes:
+  mongo1_db: {}
+  mongo2_db: {}
+  mongo3_db: {}
 
